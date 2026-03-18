@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CUSTOM MAGAZINE</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#fff; --bg2:#f5f5f3; --bg3:#e8e6e2;
+      --text:#1a1a18; --text2:#6b6b67; --text3:#9b9b97;
+      --border:rgba(0,0,0,0.09); --border2:rgba(0,0,0,0.16);
+      --red:#E24B4A; --red-bg:#fff5f5; --gold:#BA7517; --r:11px;
+    }
+    @media (prefers-color-scheme:dark) {
+      :root { --bg:#1c1c1a; --bg2:#252523; --bg3:#2e2e2b; --text:#e8e6e0; --text2:#9b9b97; --text3:#6b6b67; --border:rgba(255,255,255,0.09); --border2:rgba(255,255,255,0.16); --red-bg:#2d1c1c; }
+    }
+    html,body { height:100%; overflow:hidden; }
+    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Apple SD Gothic Neo',sans-serif; background:var(--bg); color:var(--text); font-size:13px; display:flex; flex-direction:column; }
+
+    /* ── 헤더 ── */
+    .header { padding:11px 14px 0; border-bottom:.5px solid var(--border); flex-shrink:0; }
+    .hd-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:9px; }
+    .logo { font-size:11px; font-weight:700; letter-spacing:.12em; }
+    .hd-right { display:flex; align-items:center; gap:5px; }
+    .badge { background:var(--red); color:#fff; font-size:10px; font-weight:700; padding:2px 7px; border-radius:20px; min-width:22px; text-align:center; display:none; }
+    .icon-btn { background:none; border:.5px solid var(--border2); border-radius:6px; padding:4px 8px; font-size:11px; color:var(--text2); cursor:pointer; transition:background .12s; }
+    .icon-btn:hover { background:var(--bg2); }
+
+    /* ── 탭 (스와이프 가능) ── */
+    .tab-bar {
+      display:flex; overflow-x:auto; scrollbar-width:none;
+      -webkit-overflow-scrolling:touch;
+      touch-action:pan-x;
+    }
+    .tab-bar::-webkit-scrollbar { display:none; }
+    .feed-tab { flex-shrink:0; padding:8px 16px; font-size:12px; font-weight:500; color:var(--text2); background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; transition:all .12s; margin-bottom:-.5px; white-space:nowrap; }
+    .feed-tab.on { color:var(--text); border-bottom-color:var(--text); }
+
+    /* ── 필터 칩 ── */
+    .filter-bar {
+      display:flex; gap:5px; overflow-x:auto; scrollbar-width:none;
+      padding:8px 14px; flex-shrink:0; border-bottom:.5px solid var(--border);
+      -webkit-overflow-scrolling:touch;
+      touch-action:pan-x;
+      cursor:grab;
+    }
+    .filter-bar:active { cursor:grabbing; }
+    .filter-bar::-webkit-scrollbar { display:none; }
+    .chip { flex-shrink:0; font-size:11px; padding:3px 10px; border-radius:20px; border:.5px solid var(--border2); color:var(--text2); cursor:pointer; background:none; transition:all .12s; white-space:nowrap; }
+    .chip.on { background:var(--text); color:var(--bg); border-color:var(--text); }
+    .chip[draggable="true"] { cursor:grab; }
+    .chip[draggable="true"]:active { cursor:grabbing; }
+
+    /* ── 상단 광고 ── */
+    .ad-top { display:none; padding:5px 12px 6px; border-bottom:.5px solid var(--border); background:var(--bg2); flex-shrink:0; }
+    .ad-top.on { display:block; }
+    .ad-label-bar { font-size:9px; color:var(--text3); text-align:right; margin-bottom:3px; letter-spacing:.04em; }
+
+    /* ── 피드 컨테이너 ── */
+    .feed { flex:1; overflow-y:auto; padding:8px 10px 4px; }
+    .feed::-webkit-scrollbar { width:3px; }
+    .feed::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+
+    /* ── 카드 래퍼 ── */
+    .card-wrap {
+      position:relative; overflow:hidden; border-radius:var(--r);
+      margin-bottom:7px;
+    }
+    /* 스와이프 배경 */
+    .sw-bg {
+      position:absolute; inset:0; border-radius:var(--r);
+      display:flex; align-items:center;
+      pointer-events:none; opacity:0;
+    }
+    .sw-bg.left  { background:var(--bg3);  justify-content:flex-start; padding-left:16px; }
+    .sw-bg.right { background:var(--bg3);  justify-content:flex-end;   padding-right:16px; }
+
+    /* ── 카드 ── */
+    .card {
+      position:relative; display:flex; gap:11px; padding:11px;
+      border-radius:var(--r); border:.5px solid var(--border);
+      background:var(--bg); cursor:pointer; will-change:transform;
+      touch-action:pan-y; user-select:none;
+      transition:background .12s, border-color .12s;
+    }
+    .card:hover { background:var(--bg2); border-color:var(--border2); }
+    .card.is-new { border-color:rgba(226,75,74,.22); background:var(--red-bg); }
+    .card.is-ad  { border-color:rgba(186,117,23,.2); }
+    .card.read   { opacity:.52; }
+
+    /* 썸네일 */
+    .thumb-wrap { position:relative; flex-shrink:0; width:82px; height:82px; }
+    .card-thumb { width:82px; height:82px; border-radius:8px; object-fit:cover; display:block; background:var(--bg3); }
+    .thumb-ph { width:82px; height:82px; border-radius:8px; background:var(--bg3); display:flex; align-items:center; justify-content:center; color:var(--text3); }
+    .thumb-new {
+      position:absolute; top:5px; left:5px;
+      background:var(--red); color:#fff; font-size:9px; font-weight:700;
+      padding:2px 5px; border-radius:3px; letter-spacing:.05em;
+      pointer-events:none; transition:opacity .15s;
+    }
+
+    /* 카드 본문 */
+    .card-body { flex:1; min-width:0; display:flex; flex-direction:column; justify-content:space-between; padding-right:20px; }
+    .card-meta { display:flex; align-items:center; gap:4px; margin-bottom:4px; flex-wrap:wrap; }
+    .card-source { font-size:10px; font-weight:600; color:var(--red); }
+    .card-source.read { color:var(--text3); }
+    .ad-badge { font-size:9px; color:var(--gold); font-weight:600; border:.5px solid var(--gold); padding:1px 4px; border-radius:3px; }
+    .card-dot,.card-time { font-size:10px; color:var(--text3); }
+    .card-title { font-size:13px; font-weight:500; line-height:1.42; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-bottom:4px; }
+    .card.read .card-title { color:var(--text2); }
+    .card-summary { font-size:11px; color:var(--text3); line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+
+    /* 스크랩 버튼 */
+    .scrap-btn { position:absolute; top:9px; right:8px; background:none; border:none; cursor:pointer; color:var(--text3); padding:3px; transition:color .12s, transform .12s; }
+    .scrap-btn:hover { color:var(--gold); transform:scale(1.15); }
+    .scrap-btn.on { color:var(--gold); }
+
+    /* ── 더보기 ── */
+    .load-more { display:flex; align-items:center; justify-content:center; gap:5px; padding:11px; margin-bottom:7px; border-radius:var(--r); border:.5px dashed var(--border2); background:none; color:var(--text2); font-size:12px; cursor:pointer; width:100%; transition:background .12s; }
+    .load-more:hover { background:var(--bg2); }
+
+    /* ── 읽은 글 접기/펼치기 (하단) ── */
+    .read-section { margin-top:4px; }
+    .read-toggle-btn {
+      display:flex; align-items:center; justify-content:space-between;
+      width:100%; padding:10px 12px;
+      background:var(--bg2); border:.5px solid var(--border);
+      border-radius:var(--r); cursor:pointer; font-size:12px; color:var(--text2);
+      transition:background .12s;
+    }
+    .read-toggle-btn:hover { background:var(--bg3); }
+    .read-toggle-btn .arrow { transition:transform .2s; font-size:10px; }
+    .read-toggle-btn.open .arrow { transform:rotate(180deg); }
+    .read-list { display:none; margin-top:6px; }
+    .read-list.open { display:block; }
+
+    /* ── 인라인 광고 ── */
+    .ad-inline { border-radius:var(--r); border:.5px solid rgba(186,117,23,.25); background:#FAEEDA14; padding:8px 10px; margin-bottom:7px; }
+    .ad-inline-label { font-size:9px; color:var(--gold); font-weight:600; letter-spacing:.04em; margin-bottom:5px; }
+
+    /* ── 하단 광고 ── */
+    .ad-bottom { display:none; padding:5px 12px 6px; border-top:.5px solid var(--border); background:var(--bg2); flex-shrink:0; }
+    .ad-bottom.on { display:block; }
+
+    /* ── 푸터 ── */
+    .footer { padding:6px 14px; border-top:.5px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+    .footer-text { font-size:10px; color:var(--text3); cursor:default; }
+    .btn-refresh { font-size:11px; color:var(--text2); background:none; border:.5px solid var(--border2); border-radius:5px; padding:3px 8px; cursor:pointer; transition:background .12s; }
+    .btn-refresh:hover { background:var(--bg2); }
+    .btn-refresh:disabled { opacity:.4; cursor:not-allowed; }
+
+    /* ── 빈/로딩 ── */
+    .empty,.loading { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; color:var(--text3); text-align:center; padding:60px 20px; }
+    .empty p { font-size:13px; } .empty small { font-size:11px; line-height:1.6; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .spinner { width:18px; height:18px; border:2px solid var(--border2); border-top-color:var(--text3); border-radius:50%; animation:spin .8s linear infinite; }
+
+    .toast { position:fixed; bottom:44px; left:10px; right:10px; background:var(--bg3); border:.5px solid var(--border2); border-radius:8px; padding:8px 12px; font-size:11px; color:var(--text2); display:none; z-index:100; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="hd-top">
+      <span class="logo">CUSTOM MAGAZINE</span>
+      <div class="hd-right">
+        <span class="badge" id="badge"></span>
+        <button class="icon-btn" id="btnSettings">⚙</button>
+      </div>
+    </div>
+    <!-- 탭 (스와이프 가능) -->
+    <div class="tab-bar" id="tabBar">
+      <button class="feed-tab on" data-tab="feed">피드</button>
+      <button class="feed-tab" data-tab="scrap">스크랩 <span id="scrapCount"></span></button>
+    </div>
+  </div>
+
+  <!-- 필터 칩 (피드 탭에서만) -->
+  <div class="filter-bar" id="filterBar">
+    <button class="chip on" data-cat="전체">전체</button>
+  </div>
+
+  <!-- 상단 광고 -->
+  <div class="ad-top" id="adTop">
+    <div class="ad-label-bar">AD · 광고</div>
+    <div id="adTopContent"></div>
+  </div>
+
+  <!-- 피드 -->
+  <div class="feed" id="feed">
+    <div class="loading"><div class="spinner"></div><span style="font-size:12px">불러오는 중...</span></div>
+  </div>
+
+  <!-- 하단 광고 -->
+  <div class="ad-bottom" id="adBottom">
+    <div class="ad-label-bar">AD · 광고</div>
+    <div id="adBottomContent"></div>
+  </div>
+
+  <div class="footer">
+    <span class="footer-text" id="footerText">—</span>
+    <button class="btn-refresh" id="btnRefresh">새로고침</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="sidepanel.js"></script>
+</body>
+</html>

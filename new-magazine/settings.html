@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEW MAGAZINE — 설정</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#fff; --bg2:#f5f5f3; --bg3:#eeece8;
+      --text:#1a1a18; --text2:#6b6b67; --text3:#9b9b97;
+      --border:rgba(0,0,0,0.09); --border2:rgba(0,0,0,0.18);
+      --red:#E24B4A; --green:#3B6D11; --green-bg:#EAF3DE;
+      --r:10px;
+    }
+    @media (prefers-color-scheme:dark) {
+      :root { --bg:#1c1c1a; --bg2:#252523; --bg3:#2e2e2b; --text:#e8e6e0; --text2:#9b9b97; --text3:#6b6b67; --border:rgba(255,255,255,0.09); --border2:rgba(255,255,255,0.18); --green-bg:#1a2810; }
+    }
+    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Apple SD Gothic Neo',sans-serif; background:var(--bg2); color:var(--text); font-size:13px; min-height:100vh; }
+    .wrap { max-width:700px; margin:0 auto; padding:32px 20px 80px; }
+
+    h1 { font-size:20px; font-weight:600; letter-spacing:.06em; }
+    .sub { font-size:12px; color:var(--text3); margin:4px 0 28px; }
+
+    /* 탭 */
+    .tabs { display:flex; gap:2px; border-bottom:.5px solid var(--border2); margin-bottom:20px; }
+    .tab { font-size:13px; padding:8px 16px; background:none; border:none; border-bottom:2px solid transparent; color:var(--text2); cursor:pointer; margin-bottom:-.5px; transition:color .12s; }
+    .tab.on { color:var(--text); border-bottom-color:var(--text); font-weight:500; }
+    .pane { display:none; } .pane.on { display:block; }
+
+    /* 섹션 */
+    .sec { margin-bottom:22px; }
+    .sec-hd { font-size:11px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; }
+
+    /* 소스 카드 */
+    .src-card { background:var(--bg); border:.5px solid var(--border); border-radius:var(--r); margin-bottom:6px; overflow:hidden; }
+    .src-row { display:flex; align-items:center; gap:10px; padding:11px 14px; }
+    .src-icon { width:32px; height:32px; border-radius:8px; background:var(--bg2); display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+    .src-info { flex:1; min-width:0; }
+    .src-name { font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .src-url { font-size:10px; color:var(--text3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
+    .src-cat { font-size:10px; color:var(--text2); padding:2px 6px; background:var(--bg2); border-radius:4px; flex-shrink:0; }
+    .src-actions { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+
+    /* 토글 */
+    .tog { position:relative; width:34px; height:19px; flex-shrink:0; }
+    .tog input { opacity:0; width:0; height:0; position:absolute; }
+    .tog-track { position:absolute; inset:0; background:var(--border2); border-radius:10px; cursor:pointer; transition:background .15s; }
+    .tog input:checked + .tog-track { background:var(--text); }
+    .tog-thumb { position:absolute; top:2px; left:2px; width:15px; height:15px; background:#fff; border-radius:50%; transition:transform .15s; pointer-events:none; }
+    .tog input:checked ~ .tog-thumb { transform:translateX(15px); }
+
+    /* 버튼들 */
+    .btn-edit { font-size:11px; color:var(--text2); background:none; border:.5px solid var(--border2); border-radius:5px; padding:3px 8px; cursor:pointer; transition:background .12s; white-space:nowrap; }
+    .btn-edit:hover { background:var(--bg2); }
+    .btn-del { background:none; border:none; color:var(--text3); cursor:pointer; font-size:17px; padding:2px 2px; transition:color .12s; }
+    .btn-del:hover { color:var(--red); }
+
+    /* Edit 패널 (인라인) */
+    .edit-panel { display:none; border-top:.5px solid var(--border); padding:14px 14px 16px; background:var(--bg2); }
+    .edit-panel.open { display:block; }
+    .ep-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+    .ep-full { margin-bottom:8px; }
+    .ep-label { font-size:10px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; }
+    input[type=text], select, textarea { width:100%; background:var(--bg); border:.5px solid var(--border2); border-radius:7px; padding:7px 10px; font-size:13px; color:var(--text); outline:none; transition:border-color .12s; }
+    input:focus, select:focus, textarea:focus { border-color:var(--text3); }
+    textarea { resize:vertical; min-height:50px; font-size:11px; font-family:monospace; }
+    .ep-kw-section { margin-top:10px; }
+    .ep-kw-hd { font-size:10px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:.04em; margin-bottom:5px; }
+    .kw-tags { display:flex; flex-wrap:wrap; gap:4px; min-height:24px; align-items:center; margin-bottom:5px; }
+    .kw-tag { display:flex; align-items:center; gap:3px; font-size:11px; padding:2px 7px; border-radius:4px; }
+    .kw-tag.inc { background:var(--green-bg); color:var(--green); }
+    .kw-tag.exc { background:#FCEBEB; color:#A32D2D; }
+    @media (prefers-color-scheme:dark) {
+      .kw-tag.inc { background:#1a2810; color:#97C459; }
+      .kw-tag.exc { background:#2d1c1c; color:#F09595; }
+    }
+    .kw-tag button { background:none; border:none; cursor:pointer; color:inherit; font-size:12px; opacity:.6; padding:0; }
+    .kw-tag button:hover { opacity:1; }
+    .kw-input-row { display:flex; gap:5px; }
+    .kw-input-row input { flex:1; padding:5px 8px; font-size:12px; }
+    .kw-input-row button { background:none; border:.5px solid var(--border2); border-radius:6px; padding:5px 9px; font-size:11px; color:var(--text2); cursor:pointer; white-space:nowrap; }
+    .kw-input-row button:hover { background:var(--bg3); }
+    .ep-save { display:flex; gap:6px; margin-top:12px; }
+    .btn-save { background:var(--text); color:var(--bg); border:none; border-radius:7px; padding:7px 14px; font-size:12px; font-weight:500; cursor:pointer; }
+    .btn-save:hover { opacity:.85; }
+    .btn-cancel { background:none; color:var(--text2); border:.5px solid var(--border2); border-radius:7px; padding:7px 12px; font-size:12px; cursor:pointer; }
+    .btn-cancel:hover { background:var(--bg3); }
+
+    /* 추가 폼 */
+    .add-form { background:var(--bg); border:.5px solid var(--border); border-radius:var(--r); padding:16px; }
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+    .form-full { margin-bottom:8px; }
+    label { display:block; font-size:10px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; }
+    .form-actions { display:flex; gap:7px; margin-top:10px; flex-wrap:wrap; }
+    .btn-primary { background:var(--text); color:var(--bg); border:none; border-radius:7px; padding:8px 16px; font-size:13px; font-weight:500; cursor:pointer; }
+    .btn-primary:hover { opacity:.85; }
+    .btn-secondary { background:none; color:var(--text2); border:.5px solid var(--border2); border-radius:7px; padding:8px 14px; font-size:13px; cursor:pointer; }
+    .btn-secondary:hover { background:var(--bg2); }
+
+    /* 정보박스 */
+    .info { background:var(--bg2); border:.5px solid var(--border2); border-radius:8px; padding:12px 14px; margin-bottom:12px; font-size:11px; color:var(--text2); line-height:1.7; }
+    .info strong { color:var(--text); font-weight:500; }
+    .info code { background:var(--bg3); padding:1px 5px; border-radius:3px; font-size:10px; }
+
+    /* 광고 */
+    .ad-card { background:var(--bg); border:.5px dashed var(--border2); border-radius:var(--r); padding:16px; margin-bottom:10px; }
+    .ad-title { font-size:12px; font-weight:500; margin-bottom:4px; }
+    .ad-desc { font-size:11px; color:var(--text3); margin-bottom:10px; line-height:1.5; }
+
+    /* 설정 카드 */
+    .cfg-card { background:var(--bg); border:.5px solid var(--border); border-radius:var(--r); }
+    .cfg-row { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:.5px solid var(--border); }
+    .cfg-row:last-child { border-bottom:none; }
+    .cfg-label { font-size:13px; }
+    .cfg-desc { font-size:11px; color:var(--text3); margin-top:2px; }
+    select.sm { width:auto; min-width:80px; padding:4px 8px; font-size:12px; }
+    .btn-danger { background:none; color:var(--red); border:.5px solid var(--red); border-radius:7px; padding:5px 12px; font-size:12px; cursor:pointer; }
+
+    .kw-hint { font-size:10px; color:var(--text3); margin-top:3px; }
+    /* 일괄 편집 */
+    .bulk-row { display:grid; grid-template-columns:28px 1fr; gap:8px 10px; align-items:start; padding:12px 14px; border-bottom:.5px solid var(--border); }
+    .bulk-row:last-child { border-bottom:none; }
+    .bulk-icon { font-size:16px; padding-top:2px; }
+    .bulk-name { font-size:12px; font-weight:500; padding-top:3px; }
+    .bulk-inputs { grid-column:2; display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+    .bulk-lbl { font-size:10px; color:var(--text3); margin-bottom:3px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+    .bulk-inputs input { font-size:11px; padding:5px 8px; }
+    #bulkRows { background:var(--bg); border:.5px solid var(--border); border-radius:var(--r); overflow:hidden; }
+
+    /* 토스트 */
+    .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--text); color:var(--bg); border-radius:8px; padding:8px 16px; font-size:12px; display:none; white-space:nowrap; z-index:999; }
+
+    /* 빈 상태 */
+    .empty-msg { padding:20px; text-align:center; color:var(--text3); font-size:12px; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>NEW MAGAZINE</h1>
+  <p class="sub">구독 소스, 키워드 필터, 광고를 설정하세요</p>
+
+  <div class="tabs">
+    <button class="tab on" data-t="sources">소스 관리</button>
+    <button class="tab" data-t="bulk">일괄 편집</button>
+    <button class="tab" data-t="ads">광고 설정</button>
+    <button class="tab" data-t="general">일반</button>
+  </div>
+
+  <!-- ① 소스 관리 -->
+  <div class="pane on" id="pane-sources">
+    <div id="srcByCat"></div>
+
+    <div class="sec">
+      <div class="sec-hd">소스 직접 추가</div>
+      <div class="info">
+        <strong>X(트위터) 구독:</strong> RSSHub 브릿지를 사용하세요.<br>
+        URL: <code>https://rsshub.app/twitter/user/계정명</code> — 타입: RSS<br>
+        예) @archdaily → <code>https://rsshub.app/twitter/user/archdaily</code><br>
+        <strong>Instagram·Facebook:</strong> API 정책상 자동 수집 불가
+      </div>
+      <div class="add-form">
+        <div class="form-grid">
+          <div><label>이름</label><input type="text" id="nName" placeholder="예: Dezeen"></div>
+          <div><label>카테고리</label><input type="text" id="nCat" placeholder="예: 건축"></div>
+        </div>
+        <div class="form-full"><label>RSS URL 또는 사이트 URL</label><input type="text" id="nUrl" placeholder="https://..."></div>
+        <div class="form-grid">
+          <div><label>타입</label>
+            <select id="nType"><option value="rss">RSS 피드</option><option value="scrape">HTML 스크래핑</option></select>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" id="btnAdd">추가</button>
+          <button class="btn-secondary" id="btnReset">기본값으로 초기화</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ② 일괄 편집 -->
+  <div class="pane" id="pane-bulk">
+    <div class="sec">
+      <div class="sec-hd">일괄 키워드 편집</div>
+      <div class="info">
+        각 소스의 포함/제외 키워드를 한 화면에서 수정할 수 있어요.<br>
+        <strong>쉼표로 여러 개 입력</strong>하세요. 비워두면 해당 소스의 키워드 규칙이 삭제돼요.<br>
+        <strong>전체 소스 (공통 규칙)</strong>은 모든 소스에 공통으로 적용돼요.
+      </div>
+      <div id="bulkRows"></div>
+      <div class="form-actions" style="margin-top:14px">
+        <button class="btn-primary" id="btnBulkSave">모두 저장</button>
+        <button class="btn-secondary" id="btnBulkClearAll">전체 초기화</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ 광고 설정 -->
+  <div class="pane" id="pane-ads">
+    <div class="sec">
+      <div class="sec-hd">Carbon Ads</div>
+      <div class="info">
+        <strong>Carbon Ads 신청:</strong> <a href="https://www.carbonads.net" target="_blank" style="color:var(--text)">carbonads.net</a>에서 승인 후 스크립트 코드를 받으세요.<br>
+        개발자·디자이너 대상 광고라 클릭률이 높아요. 월 $50~300 수준.
+      </div>
+      <div class="ad-card">
+        <div class="ad-title">상단 배너 (피드 최상단)</div>
+        <div class="ad-desc">Carbon Ads 스크립트 또는 커스텀 HTML</div>
+        <textarea id="adTop" placeholder="<!-- Carbon Ads script tag -->&#10;<script async type=&quot;text/javascript&quot; src=&quot;https://cdn.carbonads.com/carbon.js?serve=...&quot;></script>"></textarea>
+      </div>
+      <div class="ad-card">
+        <div class="ad-title">하단 배너 (피드 하단)</div>
+        <div class="ad-desc">두 번째 광고 슬롯</div>
+        <textarea id="adBottom" placeholder="<!-- 하단 배너 HTML -->"></textarea>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-hd">Coupang / Amazon 제휴 배너</div>
+      <div class="info">
+        <strong>쿠팡 파트너스:</strong> <a href="https://partners.coupang.com" target="_blank" style="color:var(--text)">partners.coupang.com</a>에서 배너 HTML을 생성하세요.<br>
+        건축·디자인 관련 서적이나 도구를 추천하면 클릭 전환율이 높아요.<br>
+        <strong>Amazon Associates:</strong> 해외 사용자 대상으로 병행 운영 가능.
+      </div>
+      <div class="ad-card">
+        <div class="ad-title">쿠팡 배너 (피드 중간 삽입)</div>
+        <div class="ad-desc">매 20개 글마다 사이에 표시돼요</div>
+        <textarea id="adCoupang" placeholder="<!-- 쿠팡 파트너스 배너 HTML -->"></textarea>
+      </div>
+      <div class="ad-card">
+        <div class="ad-title">Amazon 배너</div>
+        <textarea id="adAmazon" placeholder="<!-- Amazon Associates 배너 HTML -->"></textarea>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="btnSaveAds">광고 코드 저장</button>
+  </div>
+
+  <!-- ③ 일반 -->
+  <div class="pane" id="pane-general">
+    <div class="sec">
+      <div class="sec-hd">일반 설정</div>
+      <div class="cfg-card">
+        <div class="cfg-row">
+          <div><div class="cfg-label">자동 새로고침 주기</div><div class="cfg-desc">백그라운드에서 새 글 확인 주기</div></div>
+          <select class="sm" id="interval">
+            <option value="15">15분</option><option value="30" selected>30분</option>
+            <option value="60">1시간</option><option value="120">2시간</option>
+          </select>
+        </div>
+        <div class="cfg-row">
+          <div><div class="cfg-label">데이터 초기화</div><div class="cfg-desc">저장된 기사·읽음 기록 삭제</div></div>
+          <button class="btn-danger" id="btnClear">초기화</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="settings.js"></script>
+</body>
+</html>

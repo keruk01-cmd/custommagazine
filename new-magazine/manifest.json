@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "CUSTOM MAGAZINE",
+  "version": "1.0",
+  "description": "내가 구독한 매거진과 게시판의 새 글만 모아보기",
+  "permissions": [
+    "storage",
+    "alarms",
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "https://www.archdaily.com/*",
+    "https://www.dezeen.com/*",
+    "https://vmspace.com/*",
+    "https://www.reddit.com/*",
+    "https://www.fmkorea.com/*",
+    "https://gall.dcinside.com/*",
+    "https://www.designboom.com/*",
+    "https://*/*",
+    "http://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "NEW MAGAZINE",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
