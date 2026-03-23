@@ -39,14 +39,24 @@
 
     /* ── 필터 칩 ── */
     .filter-bar {
-      display:flex; gap:5px; overflow-x:auto; scrollbar-width:none;
-      padding:8px 14px; flex-shrink:0; border-bottom:.5px solid var(--border);
+      display:flex; gap:5px;
+      overflow-x:scroll;           /* 항상 스크롤 가능 */
+      overflow-y:hidden;
+      scrollbar-width:none;
+      padding:8px 14px;
+      flex-shrink:0;
+      border-bottom:.5px solid var(--border);
       -webkit-overflow-scrolling:touch;
       touch-action:pan-x;
       cursor:grab;
+      /* 칩이 줄바꿈 되지 않도록 */
+      flex-wrap:nowrap;
+      white-space:nowrap;
+      min-width:0;
     }
     .filter-bar:active { cursor:grabbing; }
     .filter-bar::-webkit-scrollbar { display:none; }
+    .filter-bar .chip { flex-shrink:0; }  /* 칩이 절대 줄어들지 않음 */
     .chip { flex-shrink:0; font-size:11px; padding:3px 10px; border-radius:20px; border:.5px solid var(--border2); color:var(--text2); cursor:pointer; background:none; transition:all .12s; white-space:nowrap; }
     .chip.on { background:var(--text); color:var(--bg); border-color:var(--text); }
     .chip[draggable="true"] { cursor:grab; }
@@ -156,6 +166,28 @@
     @keyframes spin { to { transform:rotate(360deg); } }
     .spinner { width:18px; height:18px; border:2px solid var(--border2); border-top-color:var(--text3); border-radius:50%; animation:spin .8s linear infinite; }
 
+    /* ── 피커 패널 ── */
+    .picker-panel { background:var(--bg); border-bottom:.5px solid var(--border); flex-shrink:0; }
+    .picker-status { display:flex; align-items:center; gap:8px; padding:10px 14px; }
+    .picker-pulse { width:8px; height:8px; border-radius:50%; background:var(--red); flex-shrink:0; animation:pulse 1.2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
+    #pickerStatusText { font-size:11px; color:var(--text2); }
+    .picker-preview { padding:0 14px 12px; }
+    .picker-preview-title { font-size:10px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px; }
+    .picker-items { display:flex; flex-direction:column; gap:3px; max-height:100px; overflow-y:auto; margin-bottom:10px; }
+    .picker-item { font-size:11px; color:var(--text); background:var(--bg2); border-radius:5px; padding:4px 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .picker-form { display:flex; flex-direction:column; gap:6px; }
+    .picker-form input, .picker-form select { background:var(--bg2); border:.5px solid var(--border2); border-radius:6px; padding:6px 9px; font-size:12px; color:var(--text); outline:none; }
+    .picker-btns { display:flex; gap:6px; }
+    .picker-btns button { flex:1; padding:7px; border-radius:6px; font-size:12px; cursor:pointer; border:.5px solid var(--border2); }
+    #pickerSave { background:var(--text); color:var(--bg); border-color:var(--text); font-weight:500; }
+    #pickerCancel { background:none; color:var(--text2); }
+    .icon-btn.picking { background:var(--red); color:#fff; border-color:var(--red); }
+    .picker-samples { display:flex; gap:5px; padding:0 14px 8px; }
+    .picker-sample { flex:1; min-width:0; padding:5px 8px; border-radius:6px; border:.5px solid var(--border2); font-size:10px; color:var(--text3); text-align:center; transition:all .15s; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .picker-sample.empty { background:var(--bg2); }
+    .picker-sample.filled { background:rgba(226,75,74,.1); border-color:rgba(226,75,74,.4); color:var(--red); font-weight:500; }
+
     .toast { position:fixed; bottom:44px; left:10px; right:10px; background:var(--bg3); border:.5px solid var(--border2); border-radius:8px; padding:8px 12px; font-size:11px; color:var(--text2); display:none; z-index:100; }
   </style>
 </head>
@@ -165,6 +197,7 @@
       <span class="logo">CUSTOM MAGAZINE</span>
       <div class="hd-right">
         <span class="badge" id="badge"></span>
+        <button class="icon-btn" id="btnPicker" title="현재 페이지에서 피드 추가">＋</button>
         <button class="icon-btn" id="btnSettings">⚙</button>
       </div>
     </div>
@@ -172,6 +205,41 @@
     <div class="tab-bar" id="tabBar">
       <button class="feed-tab on" data-tab="feed">피드</button>
       <button class="feed-tab" data-tab="scrap">스크랩 <span id="scrapCount"></span></button>
+    </div>
+  </div>
+
+  <!-- 피커 패널 -->
+  <div class="picker-panel" id="pickerPanel" style="display:none">
+    <div class="picker-status">
+      <div class="picker-pulse" id="pickerPulse"></div>
+      <span id="pickerStatusText">게시글 1개를 클릭하세요 (1/3)</span>
+    </div>
+    <!-- 선택된 샘플 표시 -->
+    <div class="picker-samples" id="pickerSamples">
+      <div class="picker-sample empty" id="sample0">①</div>
+      <div class="picker-sample empty" id="sample1">②</div>
+      <div class="picker-sample empty" id="sample2">③</div>
+    </div>
+    <div class="picker-preview" id="pickerPreview" style="display:none">
+      <div class="picker-preview-title" id="pickerMatchCount">—</div>
+      <div class="picker-items" id="pickerItems"></div>
+      <div class="picker-form">
+        <input type="text" id="pickerName" placeholder="소스 이름 (예: 퀘이사존 베스트)">
+        <select id="pickerCat">
+          <option value="커뮤니티">커뮤니티</option>
+          <option value="핫딜">핫딜</option>
+          <option value="건축">건축</option>
+          <option value="디자인">디자인</option>
+          <option value="SNS">SNS</option>
+          <option value="국내뉴스">국내뉴스</option>
+          <option value="해외뉴스">해외뉴스</option>
+          <option value="기타">기타</option>
+        </select>
+        <div class="picker-btns">
+          <button id="pickerSave">피드에 추가</button>
+          <button id="pickerCancel">취소</button>
+        </div>
+      </div>
     </div>
   </div>
 

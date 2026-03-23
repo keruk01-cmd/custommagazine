@@ -10,16 +10,26 @@ const MAX_ARTICLES     = 500;
 const ITEMS_PER_SOURCE = 15;
 
 const DEFAULT_SOURCES = [
-  // ── 건축/디자인 매거진 ──
-  { id: 'archdaily',           name: 'ArchDaily',             type: 'rss',    url: 'https://www.archdaily.com/feed',                                                  category: '건축',     enabled: true  },
-  { id: 'dezeen',              name: 'Dezeen',                type: 'rss',    url: 'https://feeds.feedburner.com/dezeen',                                              category: '건축',     enabled: true  },
-  { id: 'designboom',          name: 'Designboom',            type: 'rss',    url: 'https://www.designboom.com/feed/',                                                 category: '디자인',   enabled: true  },
-  { id: 'vmspace',             name: 'VMSPACE',              type: 'scrape', url: 'https://vmspace.com/news/news.html',                                                       category: '건축',     enabled: true  },
-  // ── 커뮤니티 ──
-  { id: 'reddit_architecture', name: 'Reddit r/architecture', type: 'rss',    url: 'https://www.reddit.com/r/architecture/.rss',                                      category: 'SNS',      enabled: true  },
-  { id: 'reddit_design',       name: 'Reddit r/Design',       type: 'rss',    url: 'https://www.reddit.com/r/Design/.rss',                                            category: 'SNS',      enabled: true  },
-  { id: 'fmkorea', name: 'FM코리아 베스트', type: 'rss', url: 'https://rsshub.app/fmkorea/best', category: '커뮤니티', enabled: true },
-  { id: 'dcinside_design',     name: 'DC인사이드 디자인',     type: 'scrape', url: 'https://gall.dcinside.com/board/lists/?id=design',                                category: '커뮤니티', enabled: true  },
+  // ── 건축/디자인 (기본 비활성) ──
+  { id: 'archdaily',           name: 'ArchDaily',            type: 'rss',    url: 'https://www.archdaily.com/feed',                                                  category: '건축',     enabled: false },
+  { id: 'dezeen',              name: 'Dezeen',               type: 'rss',    url: 'https://feeds.feedburner.com/dezeen',                                              category: '건축',     enabled: false },
+  { id: 'designboom',          name: 'Designboom',           type: 'rss',    url: 'https://www.designboom.com/feed/',                                                 category: '디자인',   enabled: false },
+  { id: 'vmspace',             name: 'VMSPACE',              type: 'scrape', url: 'https://vmspace.com/news/news.html',                                               category: '건축',     enabled: false },
+  // ── SNS (방문 시 자동 수집) ──
+  { id: 'x_archdaily',         name: 'X: @ArchDaily',        type: 'visit',  url: 'https://x.com/archdaily',                                                         category: 'SNS',      enabled: false },
+  { id: 'x_dezeen',            name: 'X: @Dezeen',           type: 'visit',  url: 'https://x.com/dezeen',                                                            category: 'SNS',      enabled: false },
+  { id: 'reddit_architecture', name: 'Reddit r/architecture',type: 'rss',    url: 'https://www.reddit.com/r/architecture/.rss',                                      category: 'SNS',      enabled: false },
+  { id: 'reddit_design',       name: 'Reddit r/Design',      type: 'rss',    url: 'https://www.reddit.com/r/Design/.rss',                                            category: 'SNS',      enabled: false },
+  // ── 국내 커뮤니티 (방문 시 자동 수집) ──
+    { id: 'quasarzone_best',     name: '퀘이사존 베스트',       type: 'scrape', url: 'https://quasarzone.com/best/list/all',                                            category: '커뮤니티', enabled: false },
+    { id: 'quasarzone_sale',     name: '퀘이사존 핫딜',         type: 'scrape', url: 'https://quasarzone.com/bbs/qb_saleinfo',                                          category: '핫딜',     enabled: false },
+  { id: 'fmkorea_hotdeal',     name: 'FM코리아 핫딜',         type: 'visit',  url: 'https://www.fmkorea.com/?mid=hotdeal',                                             category: '핫딜',     enabled: false },
+  { id: 'fmkorea',             name: 'FM코리아 베스트',       type: 'visit',  url: 'https://www.fmkorea.com/index.php?mid=best&sort_index=pop_score&order_type=desc', category: '커뮤니티', enabled: false },
+  { id: 'dcinside_design',     name: 'DC인사이드 디자인',    type: 'scrape', url: 'https://gall.dcinside.com/board/lists/?id=design',                                category: '커뮤니티', enabled: false },
+  { id: 'clien_park',          name: '클리앙 모두의 공원',   type: 'visit',  url: 'https://www.clien.net/service/board/park',                                        category: '커뮤니티', enabled: false },
+  { id: 'ruliweb_best',        name: '루리웹 베스트',         type: 'visit',  url: 'https://bbs.ruliweb.com/best/selection',                                          category: '커뮤니티', enabled: false },
+  { id: 'instiz_icategory',    name: '인스티즈 핫게',         type: 'visit',  url: 'https://www.instiz.net/pt',                                                       category: '커뮤니티', enabled: false },
+  { id: 'theqoo_hot',          name: '더쿠 Hot',              type: 'visit',  url: 'https://theqoo.net/hot',                                                          category: '커뮤니티', enabled: false },
   // ── 국내 뉴스 (기본 비활성) ──
   { id: 'yonhap',              name: '연합뉴스',               type: 'rss',    url: 'https://www.yonhapnewstv.co.kr/feed/',                                            category: '국내뉴스', enabled: false },
   { id: 'hani',                name: '한겨레',                 type: 'rss',    url: 'https://www.hani.co.kr/rss/',                                                     category: '국내뉴스', enabled: false },
@@ -30,14 +40,9 @@ const DEFAULT_SOURCES = [
   { id: 'bbc',                 name: 'BBC News',               type: 'rss',    url: 'https://feeds.bbci.co.uk/news/rss.xml',                                           category: '해외뉴스', enabled: false },
   { id: 'nytimes',             name: 'NY Times',               type: 'rss',    url: 'https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml',                      category: '해외뉴스', enabled: false },
   { id: 'guardian',            name: 'The Guardian',           type: 'rss',    url: 'https://www.theguardian.com/world/rss',                                           category: '해외뉴스', enabled: false },
-  { id: 'npr',                 name: 'NPR News',               type: 'rss',    url: 'https://feeds.npr.org/1001/rss.xml',                                              category: '해외뉴스', enabled: false },
   { id: 'wired',               name: 'Wired',                  type: 'rss',    url: 'https://www.wired.com/feed/rss',                                                  category: '해외뉴스', enabled: false },
-  // ── SNS — X(Twitter) RSSHub 브릿지 경유 (기본 비활성) ──
-  { id: 'x_archdaily',         name: 'X: @ArchDaily',          type: 'rss',    url: 'https://rsshub.app/x/user/archdaily',                                             category: 'SNS',      enabled: false },
-  { id: 'x_dezeen',            name: 'X: @Dezeen',             type: 'rss',    url: 'https://rsshub.app/x/user/dezeen',                                                category: 'SNS',      enabled: false },
 ];
 
-// ── 초기화 ──────────────────────────────
 chrome.runtime.onInstalled.addListener(async () => {
   const { sources } = await chrome.storage.local.get('sources');
   if (!sources) await chrome.storage.local.set({ sources: DEFAULT_SOURCES, articles: [], newCount: 0 });
@@ -82,7 +87,85 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   if (msg.type === 'GET_DEFAULTS') sendResponse({ sources: DEFAULT_SOURCES });
+  if (msg.type === 'PICKER_CANCELLED') {
+    // 피커 취소 - sidepanel에 전달 (필요 시)
+    sendResponse({ ok: true });
+  }
+
+  // Content Script에서 페이지 방문 시 자동 수집된 기사
+  if (msg.type === 'ARTICLES_FROM_PAGE') {
+    handleArticlesFromPage(msg.sourceId, msg.articles);
+    sendResponse({ ok: true });
+  }
+
+  // Content Script에서 RSS 피드 감지
+  if (msg.type === 'RSS_DETECTED') {
+    handleRSSDetected(msg.sourceId, msg.feeds);
+    sendResponse({ ok: true });
+  }
 });
+
+// ── 페이지 방문 시 Content Script에서 수신 ─────────────────
+async function handleArticlesFromPage(sourceId, newArticles) {
+  if (!newArticles || newArticles.length === 0) return;
+
+  const { sources = [] }        = await chrome.storage.local.get('sources');
+  const { keywords = {} }       = await chrome.storage.local.get('keywords');
+  const { articles: existing = [] } = await chrome.storage.local.get('articles');
+  const existingIds = new Set(existing.map(a => a.id));
+
+  const source = sources.find(s => s.id === sourceId);
+  if (!source || !source.enabled) return;
+
+  // 기사에 소스 정보 붙이기
+  let tagged = newArticles.map((a, i) => ({
+    id: a.url,
+    sourceId: source.id,
+    sourceName: source.name,
+    category: source.category,
+    title: a.title,
+    url: a.url,
+    summary: a.summary || '',
+    thumbnail: a.thumbnail || null,
+    pubDate: Date.now() - i * 60000,
+    fetchedAt: Date.now()
+  })).filter(a => a.url && a.title);
+
+  // 키워드 필터 적용
+  tagged = applyKeywords(tagged, keywords, sourceId);
+
+  // 새 글만 추가
+  const fresh = tagged.filter(a => !existingIds.has(a.id));
+  if (fresh.length === 0) return;
+
+  console.log(`[페이지 방문 수집] ${source.name}: ${fresh.length}개 새 글`);
+
+  const merged = [...fresh, ...existing]
+    .sort((a, b) => (b.pubDate || 0) - (a.pubDate || 0))
+    .slice(0, MAX_ARTICLES);
+
+  await chrome.storage.local.set({ articles: merged, lastFetchAt: Date.now() });
+
+  // 뱃지 업데이트
+  const { newCount = 0 } = await chrome.storage.local.get('newCount');
+  const total = newCount + fresh.length;
+  await chrome.storage.local.set({ newCount: total });
+  await chrome.action.setBadgeText({ text: total > 99 ? '99+' : String(total) });
+}
+
+// RSS 피드 자동 감지 수신 → 소스 RSS URL 자동 업데이트
+async function handleRSSDetected(sourceId, feeds) {
+  if (!feeds || feeds.length === 0) return;
+  const { sources = [] } = await chrome.storage.local.get('sources');
+  const src = sources.find(s => s.id === sourceId);
+  if (!src || src.type === 'rss') return; // 이미 RSS면 스킵
+
+  // scrape 타입인데 RSS가 감지되면 자동으로 RSS로 전환
+  src.type = 'rss';
+  src.url  = feeds[0].url;
+  await chrome.storage.local.set({ sources });
+  console.log(`[RSS 자동 감지] ${src.name}: ${feeds[0].url}`);
+}
 
 // ── 전체 fetch ──────────────────────────
 async function fetchAllSources() {
@@ -95,6 +178,9 @@ async function fetchAllSources() {
 
   for (const src of sources.filter(s => s.enabled)) {
     try {
+      // type='visit' 소스는 사용자가 직접 방문할 때 content.js가 수집 (fetch 불필요)
+      if (src.type === 'visit') continue;
+
       let list = src.type === 'rss' ? await fetchRSS(src) : await fetchScrape(src);
 
       // 키워드 필터 적용
@@ -167,13 +253,45 @@ function applyKeywords(articles, keywords, sourceId) {
 }
 
 // ── RSS 파싱 (정규식, DOMParser 없음) ───
+// ── 인코딩 자동 감지 및 디코딩 ────────────
+// EUC-KR, UTF-8 등 한국 사이트 인코딩 처리
+async function decodeResponse(res) {
+  const contentType = res.headers.get('content-type') || '';
+
+  // Content-Type에서 charset 추출
+  const charsetMatch = contentType.match(/charset=([\w-]+)/i);
+  let charset = charsetMatch ? charsetMatch[1].toLowerCase() : null;
+
+  const buffer = await res.arrayBuffer();
+
+  // charset이 없으면 HTML meta 태그에서 추출 시도
+  if (!charset) {
+    const peek = new TextDecoder('utf-8', { fatal: false }).decode(buffer.slice(0, 2000));
+    const metaMatch = peek.match(/charset=["']?([\w-]+)/i)
+                   || peek.match(/encoding=["']([\w-]+)/i);
+    if (metaMatch) charset = metaMatch[1].toLowerCase();
+  }
+
+  // EUC-KR / CP949 계열 처리
+  if (charset && (charset.includes('euc-kr') || charset.includes('ks_c') || charset === 'cp949')) {
+    try {
+      return new TextDecoder('euc-kr').decode(buffer);
+    } catch(e) {
+      return new TextDecoder('utf-8', { fatal: false }).decode(buffer);
+    }
+  }
+
+  // 기본 UTF-8
+  return new TextDecoder('utf-8', { fatal: false }).decode(buffer);
+}
+
 async function fetchRSS(src) {
   const res = await fetch(src.url, {
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; RSS-Reader/1.0)', 'Accept': 'application/rss+xml,application/atom+xml,text/xml,*/*' },
     signal: AbortSignal.timeout(12000)
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const text = await res.text();
+  const text = await decodeResponse(res);
 
   const isAtom = /<feed[\s>]/i.test(text) && !/<rss[\s>]/i.test(text);
   const tag    = isAtom ? 'entry' : 'item';
@@ -262,7 +380,9 @@ function stripTags(html) {
     .replace(/\s{2,}/g,' ').trim();
 }
 
-// ── 스크래핑 ─────────────────────────────
+// ── 스크래핑 (fetch + HTML 파싱) ──────────
+// JS 렌더링 사이트(FM코리아 등)는 content.js가 방문 시 자동 수집
+// 임시 탭 생성 없음
 async function fetchScrape(src) {
   const res = await fetch(src.url, {
     headers: {
@@ -273,10 +393,10 @@ async function fetchScrape(src) {
     signal: AbortSignal.timeout(12000)
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const html = await res.text();
-  if (src.id === 'fmkorea')         return scrapeFMKorea(html, src);
-  if (src.id === 'dcinside_design') return scrapeDCInside(html, src);
-  if (src.id === 'vmspace')         return scrapeVMSPACE(html, src);
+  const html = await decodeResponse(res);
+  if (src.id === 'dcinside_design')  return scrapeDCInside(html, src);
+  if (src.id === 'vmspace')          return scrapeVMSPACE(html, src);
+  if (src.id.startsWith('quasarzone')) return scrapeQuasarzone(html, src);
   return [];
 }
 
@@ -385,6 +505,75 @@ function scrapeVMSPACE(html, src) {
     });
   }
   console.log('[VMSPACE] 추출된 글 수:', articles.length);
+  return articles;
+}
+
+// ─────────────────────────────────────────
+// 퀘이사존 스크래퍼 (SSR, fetch 가능)
+// 구조: table tbody tr > a.subject-link, .ellipsis-with-reply-cnt, img.maxImg
+// ─────────────────────────────────────────
+function scrapeQuasarzone(html, src) {
+  const articles = [];
+  const seen = new Set();
+
+  // tbody tr 블록 단위로 추출
+  const trRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+  let m;
+  while ((m = trRe.exec(html)) !== null && articles.length < ITEMS_PER_SOURCE) {
+    const block = m[1];
+
+    // a.subject-link 에서 URL 추출
+    const urlM = block.match(/<a[^>]+class="[^"]*subject-link[^"]*"[^>]+href="([^"]+)"/i)
+              || block.match(/<a[^>]+href="([^"]+)"[^>]+class="[^"]*subject-link[^"]*"/i);
+    if (!urlM) continue;
+    const href = urlM[1].trim();
+    const url  = href.startsWith('http') ? href : 'https://quasarzone.com' + href;
+    if (seen.has(url)) continue;
+    seen.add(url);
+
+    // 제목: .ellipsis-with-reply-cnt
+    const titleM = block.match(/<[^>]+class="[^"]*ellipsis-with-reply-cnt[^"]*"[^>]*>([\s\S]*?)<\/[^>]+>/i);
+    const title  = titleM ? stripTags(titleM[1]).trim() : '';
+    if (!title || title.length < 2) continue;
+
+    // 가격: .text-orange
+    const priceM = block.match(/<[^>]+class="[^"]*text-orange[^"]*"[^>]*>([^<]+)<\/[^>]+>/i);
+    const price  = priceM ? priceM[1].trim() : '';
+
+    // 상태: .label (진행중/종료/품절)
+    const statusM = block.match(/<[^>]+class="[^"]*label[^"]*"[^>]*>([^<]+)<\/[^>]+>/i);
+    const status  = statusM ? statusM[1].trim() : '';
+
+    // 날짜: .date
+    const dateM = block.match(/<[^>]+class="[^"]*date[^"]*"[^>]*>([^<]+)<\/[^>]+>/i);
+    const date  = dateM ? dateM[1].trim() : '';
+
+    // 요약: 가격 + 상태
+    const summary = [price, status, date].filter(Boolean).join(' · ');
+
+    // 썸네일: img.maxImg (lazy load → data-src 또는 src)
+    const imgM = block.match(/<img[^>]+class="[^"]*maxImg[^"]*"[^>]*>/i);
+    let thumb = null;
+    if (imgM) {
+      const dataSrcM = imgM[0].match(/data-src="([^"]+)"/i);
+      const srcM     = imgM[0].match(/src="([^"]+)"/i);
+      thumb = dataSrcM ? dataSrcM[1] : (srcM ? srcM[1] : null);
+      if (thumb && !thumb.startsWith('http')) {
+        thumb = thumb.startsWith('//') ? 'https:' + thumb : 'https://quasarzone.com' + thumb;
+      }
+    }
+
+    // 종료/품절 글은 opacity 처리를 위해 title에 표시
+    const finalTitle = (status && status !== '진행중') ? `[${status}] ${title}` : title;
+
+    articles.push({
+      id: url, sourceId: src.id, sourceName: src.name, category: src.category,
+      title: finalTitle, url, summary, thumbnail: thumb,
+      pubDate: Date.now() - articles.length * 300000, fetchedAt: Date.now()
+    });
+  }
+
+  console.log('[퀘이사존] 추출된 글 수:', articles.length);
   return articles;
 }
 

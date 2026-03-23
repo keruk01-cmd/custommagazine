@@ -21,6 +21,9 @@ let lastFetchAt    = null;
 let visibleNew     = 0;
 let visibleRead    = 0;
 let readSectionOpen = false;
+let pickerActive   = false;
+let openInNewTab   = false; // 설정에서 변경 가능
+let pickerData     = null; // { url, selector, articles[] }
 
 // ─────────────────────────────────────────
 // 초기화
@@ -28,11 +31,12 @@ let readSectionOpen = false;
 async function init() {
   chrome.runtime.sendMessage({ type: 'MARK_SEEN' });
 
-  const data = await chrome.storage.local.get(['articles','readUrls','scrapUrls','lastFetchAt','sources','keywords','categoryOrder']);
+  const data = await chrome.storage.local.get(['articles','readUrls','scrapUrls','lastFetchAt','sources','keywords','categoryOrder','openInNewTab']);
   allArticles    = data.articles      || [];
   cachedSources  = data.sources       || [];
   cachedKeywords = data.keywords      || {};
   categoryOrder  = data.categoryOrder || [];
+  openInNewTab   = data.openInNewTab  || false;
   readUrls      = new Set(data.readUrls  || []);
   scrapUrls     = new Set(data.scrapUrls || []);
   lastFetchAt   = data.lastFetchAt || null;
@@ -59,7 +63,34 @@ async function init() {
 function setupEvents() {
   document.getElementById('btnSettings').addEventListener('click', () =>
     chrome.tabs.create({ url: chrome.runtime.getURL('settings.html') }));
+  document.getElementById('btnPicker').addEventListener('click', togglePicker);
+  document.getElementById('pickerCancel').addEventListener('click', stopPicker);
+  document.getElementById('pickerSave').addEventListener('click', savePickerSource);
   document.getElementById('btnRefresh').addEventListener('click', onRefresh);
+
+  // 필터 바 마우스 드래그 스크롤 (1회만 등록)
+  const filterBar = document.getElementById('filterBar');
+  let isDraggingBar = false, barStartX = 0, barScrollLeft = 0, barDragMoved = false;
+  filterBar.addEventListener('mousedown', e => {
+    isDraggingBar = true; barDragMoved = false;
+    barStartX = e.pageX - filterBar.offsetLeft;
+    barScrollLeft = filterBar.scrollLeft;
+    filterBar.style.cursor = 'grabbing';
+    filterBar.style.userSelect = 'none';
+  });
+  window.addEventListener('mousemove', e => {
+    if (!isDraggingBar) return;
+    const x = e.pageX - filterBar.offsetLeft;
+    const dx = x - barStartX;
+    if (Math.abs(dx) > 3) barDragMoved = true;
+    filterBar.scrollLeft = barScrollLeft - dx;
+  });
+  window.addEventListener('mouseup', () => {
+    if (!isDraggingBar) return;
+    isDraggingBar = false;
+    filterBar.style.cursor = 'grab';
+    filterBar.style.userSelect = '';
+  });
 
   // 탭 클릭
   document.getElementById('tabBar').querySelectorAll('.feed-tab').forEach(t => {
@@ -139,9 +170,12 @@ function switchTab(tab) {
 // 필터 바
 // ─────────────────────────────────────────
 function buildFilter() {
-  // 카테고리는 전체 articles 기준 (비활성 소스 필터는 render()에서만)
-  const bar     = document.getElementById('filterBar');
-  const rawCats = [...new Set(allArticles.map(a => a.category).filter(Boolean))];
+  const bar = document.getElementById('filterBar');
+  // 활성화된 소스의 카테고리 + 기사에 있는 카테고리 모두 합산
+  // → 피드가 없어도 활성 소스가 있으면 탭 표시
+  const fromSources  = cachedSources.filter(s => s.enabled).map(s => s.category).filter(Boolean);
+  const fromArticles = allArticles.map(a => a.category).filter(Boolean);
+  const rawCats = [...new Set([...fromSources, ...fromArticles])];
   // 저장된 순서 적용, 새 카테고리는 뒤에 추가
   const orderedCats = [
     ...categoryOrder.filter(c => rawCats.includes(c)),
@@ -149,10 +183,19 @@ function buildFilter() {
   ];
   const cats = ['전체', ...orderedCats];
 
+  // 현재 카테고리가 목록에 없으면 전체로 리셋
+  if (!cats.includes(activeCategory)) activeCategory = '전체';
+
   bar.innerHTML = cats.map(cat =>
     `<button class="chip ${cat===activeCategory?'on':''}" data-cat="${cat}"
       draggable="${cat!=='전체'?'true':'false'}">${cat}</button>`
   ).join('');
+
+  // 활성 칩이 보이도록 스크롤
+  requestAnimationFrame(() => {
+    const activeChip = bar.querySelector('.chip.on');
+    if (activeChip) activeChip.scrollIntoView({ behavior:'instant', block:'nearest', inline:'nearest' });
+  });
 
   // 클릭 (짧은 클릭만)
   bar.querySelectorAll('.chip').forEach(b => {
@@ -437,7 +480,7 @@ function bindCards(container) {
       card.classList.remove('is-new'); card.classList.add('read');
       card.querySelector('.card-source')?.classList.add('read');
       card.querySelector('.thumb-new')?.remove();
-      chrome.tabs.create({ url });
+      openUrl(url);
     });
 
     // 스와이프 초기화
@@ -624,6 +667,161 @@ async function onRefresh() {
     showToast('새 글을 확인했습니다');
   } catch(e) { showToast('일부 소스 오류가 있어요'); }
   finally { btn.disabled = false; btn.textContent = '새로고침'; }
+}
+
+// ─────────────────────────────────────────
+// 비주얼 피커
+// ─────────────────────────────────────────
+async function togglePicker() {
+  if (pickerActive) { stopPicker(); return; }
+  pickerActive  = true;
+  pickerSamples = [];
+
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  if (!tab || tab.url.startsWith('chrome://')) {
+    showToast('일반 웹페이지에서만 사용 가능해요');
+    pickerActive = false;
+    return;
+  }
+
+  document.getElementById('btnPicker').classList.add('picking');
+  document.getElementById('pickerPanel').style.display = 'block';
+  document.getElementById('pickerPreview').style.display = 'none';
+  document.getElementById('pickerStatusText').textContent = '게시글 1개를 클릭하세요 (1/3)';
+  // 샘플 초기화
+  [0,1,2].forEach(i => {
+    const el = document.getElementById('sample'+i);
+    el.className = 'picker-sample empty';
+    el.textContent = ['①','②','③'][i];
+  });
+
+  chrome.tabs.sendMessage(tab.id, { type: 'ACTIVATE_PICKER', mode: 'multi' }, (res) => {
+    if (chrome.runtime.lastError) {
+      showToast('페이지를 새로고침 후 다시 시도해주세요');
+      stopPicker();
+    }
+  });
+}
+
+function stopPicker() {
+  pickerActive = false;
+  pickerData = null;
+  document.getElementById('btnPicker').classList.remove('picking');
+  document.getElementById('pickerPanel').style.display = 'none';
+
+  // content.js에 피커 종료 요청
+  chrome.tabs.query({ active: true, lastFocusedWindow: true }, ([tab]) => {
+    if (tab) chrome.tabs.sendMessage(tab.id, { type: 'DEACTIVATE_PICKER' }, () => {});
+  });
+}
+
+async function savePickerSource() {
+  if (!pickerData || !pickerData.articles?.length) {
+    showToast('먼저 게시글 목록을 선택해주세요');
+    return;
+  }
+  const name = document.getElementById('pickerName').value.trim();
+  const cat  = document.getElementById('pickerCat').value;
+  if (!name) { showToast('소스 이름을 입력하세요'); return; }
+
+  const { sources = [] } = await chrome.storage.local.get('sources');
+  const newId = `custom_${Date.now()}`;
+
+  const newSource = {
+    id: newId,
+    name,
+    type: 'visit',
+    url: pickerData.url,
+    category: cat,
+    enabled: true
+  };
+
+  // 셀렉터 설정 저장
+  if (pickerData.selector) {
+    const { scrapeConfigs = {} } = await chrome.storage.local.get('scrapeConfigs');
+    scrapeConfigs[newId] = pickerData.config;
+    await chrome.storage.local.set({ scrapeConfigs });
+  }
+
+  sources.push(newSource);
+  await chrome.storage.local.set({ sources });
+  cachedSources = sources;
+  chrome.runtime.sendMessage({ type: 'SAVE_SOURCES', sources });
+
+  // 감지된 기사 즉시 피드에 추가
+  if (pickerData.articles?.length > 0) {
+    chrome.runtime.sendMessage({
+      type: 'ARTICLES_FROM_PAGE',
+      sourceId: newId,
+      articles: pickerData.articles
+    });
+  }
+
+  showToast(`✓ "${name}" 피드에 추가됐어요`);
+  stopPicker();
+  setTimeout(() => { buildFilter(); render(); }, 500);
+}
+
+// content.js에서 피커 메시지 수신
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+
+  // 샘플 1개 선택될 때마다
+  if (msg.type === 'PICKER_SAMPLE') {
+    pickerSamples.push(msg);
+    const n = pickerSamples.length;
+    // 샘플 칩 업데이트
+    const chip = document.getElementById('sample' + (n-1));
+    if (chip) {
+      chip.className = 'picker-sample filled';
+      chip.textContent = msg.title?.slice(0, 12) || ('샘플 ' + n);
+    }
+    if (n < 3) {
+      document.getElementById('pickerStatusText').textContent =
+        `게시글 ${n+1}개를 클릭하세요 (${n+1}/3)`;
+    } else {
+      document.getElementById('pickerStatusText').textContent = '분석 중...';
+    }
+  }
+
+  // 3개 완료 후 최종 결과
+  if (msg.type === 'PICKER_RESULT') {
+    pickerData = msg;
+    const count = msg.articles.length;
+    document.getElementById('pickerStatusText').textContent =
+      count > 0 ? `✓ ${count}개 항목 감지됨` : '항목을 찾지 못했어요';
+    document.getElementById('pickerMatchCount').textContent =
+      `감지된 항목 ${count}개`;
+    document.getElementById('pickerPreview').style.display = count > 0 ? 'block' : 'none';
+    document.getElementById('pickerPulse').style.animationPlayState = 'paused';
+
+    const itemsEl = document.getElementById('pickerItems');
+    itemsEl.innerHTML = msg.articles.slice(0, 5).map(a =>
+      `<div class="picker-item">${esc(a.title)}</div>`
+    ).join('') + (count > 5
+      ? `<div class="picker-item" style="color:var(--text3)">...외 ${count-5}개</div>` : '');
+
+    try {
+      const hostname = new URL(msg.url).hostname.replace('www.','');
+      document.getElementById('pickerName').placeholder = hostname;
+    } catch(e) {}
+  }
+});
+
+// ─────────────────────────────────────────
+// URL 열기 (현재 탭 / 새 탭)
+// ─────────────────────────────────────────
+function openUrl(url) {
+  if (openInNewTab) {
+    chrome.tabs.create({ url });
+  } else {
+    chrome.tabs.query({ active: true, lastFocusedWindow: true }, ([tab]) => {
+      if (tab) {
+        chrome.tabs.update(tab.id, { url });
+      } else {
+        chrome.tabs.create({ url });
+      }
+    });
+  }
 }
 
 // ─────────────────────────────────────────

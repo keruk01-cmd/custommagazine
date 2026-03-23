@@ -2,13 +2,13 @@
 // NEW MAGAZINE - settings.js
 // =====================================================
 
-const ICONS = {'건축':'🏛️','디자인':'✏️','SNS':'💬','커뮤니티':'👥','국내뉴스':'📰','해외뉴스':'🌐','기타':'📄'};
+const ICONS = {'건축':'🏛️','디자인':'✏️','SNS':'💬','커뮤니티':'👥','핫딜':'🛒','국내뉴스':'📰','해외뉴스':'🌐','기타':'📄'};
 
 let sources  = [];
 let keywords = {}; // { sourceId: { include:[], exclude:[] } }
 
 async function init() {
-  const data = await chrome.storage.local.get(['sources','keywords','adTop','adBottom','adCoupang','adAmazon']);
+  const data = await chrome.storage.local.get(['sources','keywords','adTop','adBottom','adCoupang','adAmazon','openInNewTab']);
   sources  = data.sources  || [];
   keywords = data.keywords || {};
   renderSources();
@@ -34,7 +34,30 @@ function setupButtons() {
   document.getElementById('btnAdd').addEventListener('click', addSource);
   document.getElementById('btnReset').addEventListener('click', resetSources);
   document.getElementById('btnClear').addEventListener('click', clearData);
+  document.getElementById('btnExport').addEventListener('click', exportSources);
+  document.getElementById('importFile').addEventListener('change', importSources);
   document.getElementById('btnSaveAds').addEventListener('click', saveAds);
+
+  // 링크 열기 방식 토글
+  const toggle = document.getElementById('openInNewTab');
+  const thumb  = toggle?.parentElement?.querySelector('.tog-thumb');
+  const track  = toggle?.parentElement?.querySelector('.tog-track');
+  if (toggle) {
+    // 저장된 값 로드
+    toggle.checked = data.openInNewTab || false;
+    updateToggleStyle();
+
+    toggle.addEventListener('change', async () => {
+      await chrome.storage.local.set({ openInNewTab: toggle.checked });
+      updateToggleStyle();
+      showToast(toggle.checked ? '새 탭에서 열기로 변경됨' : '현재 탭에서 열기로 변경됨');
+    });
+
+    function updateToggleStyle() {
+      if (track) track.style.background = toggle.checked ? 'var(--text)' : 'var(--border2)';
+      if (thumb) thumb.style.transform  = toggle.checked ? 'translateX(15px)' : 'translateX(0)';
+    }
+  }
   document.getElementById('btnBulkSave').addEventListener('click', saveBulkEdit);
   document.getElementById('btnBulkClearAll').addEventListener('click', clearAllKeywords);
 }
@@ -50,11 +73,21 @@ function renderSources() {
     const list = sources.filter(s => s.category === cat);
     const icon = ICONS[cat] || ICONS['기타'];
     const activeN = list.filter(s => s.enabled).length;
+    const allOn  = activeN === list.length;
     return `
       <div class="sec">
         <div class="sec-hd">
-          ${icon} ${esc(cat)}
-          <span style="font-weight:400;color:var(--text3)">${activeN}/${list.length} 활성</span>
+          <span>${icon} ${esc(cat)} <span style="font-weight:400;color:var(--text3)">(${activeN}/${list.length})</span></span>
+          <div style="display:flex;gap:4px">
+            <button class="btn-cat-toggle" data-cat="${esc(cat)}" data-enable="true"
+              style="font-size:10px;padding:2px 8px;border-radius:4px;background:none;border:.5px solid var(--border2);color:var(--text2);cursor:pointer">
+              모두켜기
+            </button>
+            <button class="btn-cat-toggle" data-cat="${esc(cat)}" data-enable="false"
+              style="font-size:10px;padding:2px 8px;border-radius:4px;background:none;border:.5px solid var(--border2);color:var(--text2);cursor:pointer">
+              모두끄기
+            </button>
+          </div>
         </div>
         ${list.map(s => srcCardHTML(s)).join('')}
       </div>`;
@@ -63,6 +96,16 @@ function renderSources() {
   // 이벤트
   container.addEventListener('change', onToggle);
   container.addEventListener('click', onAction);
+  // 카테고리 모두켜기/끄기
+  container.addEventListener('click', e => {
+    const btn = e.target.closest('.btn-cat-toggle');
+    if (!btn) return;
+    const cat    = btn.dataset.cat;
+    const enable = btn.dataset.enable === 'true';
+    sources.forEach(s => { if (s.category === cat) s.enabled = enable; });
+    saveSources(); renderSources(); renderBulkEdit();
+    showToast(`${cat} ${enable ? '전체 활성화' : '전체 비활성화'}`);
+  });
   // 엔터 키 지원 (CSP 준수 — 이벤트 위임)
   container.addEventListener('keydown', e => {
     const inp = e.target;
@@ -118,7 +161,8 @@ function editPanelHTML(src, kw) {
       <div class="ep-full">
         <div class="ep-label">타입</div>
         <select data-field="type" data-id="${src.id}">
-          <option value="rss" ${src.type==='rss'?'selected':''}>RSS 피드</option>
+          <option value="rss"    ${src.type==='rss'   ?'selected':''}>RSS 피드</option>
+          <option value="visit"  ${src.type==='visit' ?'selected':''}>👁 방문 시 자동 수집</option>
           <option value="scrape" ${src.type==='scrape'?'selected':''}>HTML 스크래핑</option>
         </select>
       </div>
@@ -262,18 +306,144 @@ function onKw(btn) {
 }
 
 // ── 소스 추가 ───────────────────────────
-function addSource() {
+async function addSource() {
   const name = document.getElementById('nName').value.trim();
   const url  = document.getElementById('nUrl').value.trim();
   const cat  = document.getElementById('nCat').value.trim() || '기타';
-  const type = document.getElementById('nType').value;
-  if (!name) { showToast('이름을 입력하세요'); return; }
+  let type   = document.getElementById('nType').value;
+
   if (!url || !url.startsWith('http')) { showToast('올바른 URL을 입력하세요'); return; }
   if (sources.some(s => s.url === url)) { showToast('이미 등록된 URL이에요'); return; }
-  sources.push({ id: `c_${Date.now()}`, name, type, url, category: cat, enabled: true });
-  saveSources(); renderSources(); renderBulkEdit();
-  ['nName','nUrl','nCat'].forEach(id => document.getElementById(id).value = '');
-  showToast(`${name} 추가됨`);
+
+  const btn = document.getElementById('btnAdd');
+  btn.disabled = true; btn.textContent = '분석 중...';
+
+  try {
+    // ① RSS 자동 감지 시도
+    if (type === 'rss' || type === 'auto') {
+      const rssUrl = await autoDetectRSS(url);
+      if (rssUrl) {
+        const finalName = name || new URL(url).hostname.replace('www.','');
+        sources.push({ id: `c_${Date.now()}`, name: finalName, type: 'rss', url: rssUrl, category: cat, enabled: true });
+        saveSources(); renderSources(); renderBulkEdit();
+        document.getElementById('nUrl').value = '';
+        document.getElementById('nName').value = '';
+        showToast(`✓ RSS 자동 감지됨: ${finalName}`);
+        return;
+      }
+    }
+
+    // ② RSS 없으면 Claude API로 구조 분석
+    if (!name) { showToast('이름을 입력하세요'); return; }
+    showToast('Claude가 페이지 구조를 분석 중...');
+    const config = await analyzeWithClaude(url);
+
+    const newSrc = {
+      id: `c_${Date.now()}`, name, type: 'scrape', url, category: cat, enabled: true,
+      autoConfig: config  // Claude가 분석한 셀렉터 저장
+    };
+    sources.push(newSrc);
+
+    if (config) {
+      // 스크래핑 구성 저장
+      const { scrapeConfigs = {} } = await chrome.storage.local.get('scrapeConfigs');
+      scrapeConfigs[newSrc.id] = config;
+      await chrome.storage.local.set({ scrapeConfigs });
+      showToast(`✓ 구조 자동 분석 완료: ${name}`);
+    } else {
+      showToast(`추가됨 (수동 설정 필요): ${name}`);
+    }
+
+    saveSources(); renderSources(); renderBulkEdit();
+    ['nName','nUrl','nCat'].forEach(id => document.getElementById(id).value = '');
+
+  } finally {
+    btn.disabled = false; btn.textContent = '추가';
+  }
+}
+
+// ─────────────────────────────────────────
+// RSS 자동 감지
+// ─────────────────────────────────────────
+async function autoDetectRSS(pageUrl) {
+  // 일반적인 RSS 경로들 시도
+  const candidates = [
+    pageUrl, // 직접 URL이 RSS일 수도
+    pageUrl.replace(/\/?$/, '/feed'),
+    pageUrl.replace(/\/?$/, '/feed/'),
+    pageUrl.replace(/\/?$/, '/rss'),
+    pageUrl.replace(/\/?$/, '/rss.xml'),
+    pageUrl.replace(/\/?$/, '/atom.xml'),
+    pageUrl.replace(/\/?$/, '/index.xml'),
+    new URL('/feed', pageUrl).href,
+    new URL('/rss', pageUrl).href,
+    new URL('/rss.xml', pageUrl).href,
+    new URL('/atom.xml', pageUrl).href,
+    new URL('/feed.xml', pageUrl).href,
+  ];
+
+  // Content Script로 페이지 <link rel="alternate"> 탐색
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab) {
+      const result = await chrome.tabs.sendMessage(tab.id, { type: 'DETECT_RSS' });
+      if (result?.feeds?.length > 0) return result.feeds[0].url;
+    }
+  } catch(e) {}
+
+  // 직접 fetch로 확인
+  for (const url of candidates.slice(1, 6)) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000), method: 'HEAD' });
+      const ct = res.headers.get('content-type') || '';
+      if (res.ok && (ct.includes('xml') || ct.includes('rss') || ct.includes('atom'))) {
+        return url;
+      }
+    } catch(e) {}
+  }
+  return null;
+}
+
+// ─────────────────────────────────────────
+// Claude API로 페이지 구조 자동 분석
+// ─────────────────────────────────────────
+async function analyzeWithClaude(url) {
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'text/html' },
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    // HTML 축약 (Claude API 토큰 절약)
+    const shortened = html.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<style[\s\S]*?<\/style>/gi,'').slice(0, 8000);
+
+    const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 500,
+        messages: [{
+          role: 'user',
+          content: `다음 HTML에서 기사/게시글 목록의 CSS 셀렉터를 찾아주세요.
+JSON으로만 답하세요: {"itemSelector":"...","titleSelector":"...","linkSelector":"...","imageSelector":"..."}
+없으면 null.
+
+HTML:
+${shortened}`
+        }]
+      })
+    });
+
+    const data = await apiRes.json();
+    const text = data.content?.[0]?.text || '';
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) return JSON.parse(jsonMatch[0]);
+  } catch(e) {
+    console.warn('Claude API 분석 실패:', e);
+  }
+  return null;
 }
 
 async function resetSources() {
@@ -374,6 +544,86 @@ async function saveAds() {
   const adAmazon  = document.getElementById('adAmazon').value.trim();
   await chrome.storage.local.set({ adTop, adBottom, adCoupang, adAmazon });
   showToast('광고 코드 저장됨');
+}
+
+// ── Export / Import ────────────────────────
+function exportSources() {
+  const exportData = {
+    version: '1.0',
+    exportedAt: new Date().toISOString(),
+    sources: sources.map(s => ({
+      id: s.id,
+      name: s.name,
+      type: s.type,
+      url: s.url,
+      category: s.category,
+      enabled: s.enabled
+    })),
+    keywords: keywords
+  };
+
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const date = new Date().toISOString().slice(0,10);
+  a.href     = url;
+  a.download = `custom-magazine-sources-${date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`${sources.length}개 소스 내보내기 완료`);
+}
+
+async function importSources(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+
+    // 유효성 검사
+    if (!data.sources || !Array.isArray(data.sources)) {
+      showToast('올바른 파일 형식이 아니에요');
+      return;
+    }
+
+    // 기존 소스와 합산 (URL 기준 중복 제거)
+    const existingUrls = new Set(sources.map(s => s.url));
+    let addedCount = 0;
+
+    data.sources.forEach(s => {
+      if (!s.url || !s.name) return;
+      if (existingUrls.has(s.url)) return; // 중복 스킵
+      sources.push({
+        id: s.id || `import_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        name: s.name,
+        type: s.type || 'rss',
+        url: s.url,
+        category: s.category || '기타',
+        enabled: s.enabled !== undefined ? s.enabled : true
+      });
+      existingUrls.add(s.url);
+      addedCount++;
+    });
+
+    // 키워드도 병합
+    if (data.keywords && typeof data.keywords === 'object') {
+      Object.assign(keywords, data.keywords);
+      await chrome.storage.local.set({ keywords });
+    }
+
+    saveSources();
+    renderSources();
+    renderBulkEdit();
+    showToast(`${addedCount}개 소스 가져오기 완료 (중복 ${data.sources.length - addedCount}개 제외)`);
+
+  } catch(err) {
+    showToast('파일을 읽는 중 오류가 발생했어요');
+    console.error(err);
+  }
+
+  // input 초기화 (같은 파일 재선택 가능하도록)
+  e.target.value = '';
 }
 
 // ── 데이터 초기화 ────────────────────────

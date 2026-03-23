@@ -154,10 +154,10 @@
     <div class="sec">
       <div class="sec-hd">소스 직접 추가</div>
       <div class="info">
-        <strong>X(트위터) 구독:</strong> RSSHub 브릿지를 사용하세요.<br>
-        URL: <code>https://rsshub.app/twitter/user/계정명</code> — 타입: RSS<br>
-        예) @archdaily → <code>https://rsshub.app/twitter/user/archdaily</code><br>
-        <strong>Instagram·Facebook:</strong> API 정책상 자동 수집 불가
+        <strong>🔍 자동 감지 (권장):</strong> URL만 입력하면 RSS를 자동으로 찾아요.<br>
+        <strong>👁 방문 시 자동 수집:</strong> FM코리아, X.com 등 JS 렌더링 사이트. 해당 사이트를 브라우저로 방문하면 자동으로 피드에 추가돼요.<br>
+        <strong>X(트위터):</strong> 타입을 "방문 시 자동 수집"으로 설정 후 <code>https://x.com/계정명</code> 입력<br>
+        <strong>Instagram·Facebook:</strong> API 정책상 불가
       </div>
       <div class="add-form">
         <div class="form-grid">
@@ -167,7 +167,12 @@
         <div class="form-full"><label>RSS URL 또는 사이트 URL</label><input type="text" id="nUrl" placeholder="https://..."></div>
         <div class="form-grid">
           <div><label>타입</label>
-            <select id="nType"><option value="rss">RSS 피드</option><option value="scrape">HTML 스크래핑</option></select>
+            <select id="nType">
+            <option value="auto">🔍 자동 감지 (권장)</option>
+            <option value="rss">RSS 피드</option>
+            <option value="visit">👁 방문 시 자동 수집</option>
+            <option value="scrape">HTML 스크래핑</option>
+          </select>
           </div>
         </div>
         <div class="form-actions">
@@ -247,6 +252,32 @@
             <option value="15">15분</option><option value="30" selected>30분</option>
             <option value="60">1시간</option><option value="120">2시간</option>
           </select>
+        </div>
+        <div class="cfg-row">
+          <div><div class="cfg-label">링크 열기 방식</div><div class="cfg-desc">기사 클릭 시 현재 탭에서 열기 (기본) 또는 새 탭</div></div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+            <span style="color:var(--text3)" id="linkModeLabel">현재 탭</span>
+            <div style="position:relative;width:34px;height:19px">
+              <input type="checkbox" id="openInNewTab" style="opacity:0;width:0;height:0;position:absolute">
+              <div class="tog-track" style="position:absolute;inset:0;background:var(--border2);border-radius:10px;cursor:pointer;transition:background .15s"></div>
+              <div class="tog-thumb" style="position:absolute;top:2px;left:2px;width:15px;height:15px;background:#fff;border-radius:50%;transition:transform .15s;pointer-events:none"></div>
+            </div>
+            <span style="color:var(--text3)">새 탭</span>
+          </label>
+        </div>
+        <div class="cfg-row">
+          <div><div class="cfg-label">소스 내보내기</div><div class="cfg-desc">구독 중인 소스 목록을 JSON 파일로 저장</div></div>
+          <button class="btn-secondary" id="btnExport">내보내기</button>
+        </div>
+        <div class="cfg-row">
+          <div>
+            <div class="cfg-label">소스 가져오기</div>
+            <div class="cfg-desc">JSON 파일로 소스 목록 불러오기 (기존 소스와 합산)</div>
+          </div>
+          <label class="btn-secondary" style="cursor:pointer">
+            가져오기
+            <input type="file" id="importFile" accept=".json" style="display:none">
+          </label>
         </div>
         <div class="cfg-row">
           <div><div class="cfg-label">데이터 초기화</div><div class="cfg-desc">저장된 기사·읽음 기록 삭제</div></div>
